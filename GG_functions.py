@@ -15,6 +15,7 @@ import time
 import numpy as np
 import pandas as pd
 import sys
+import scipy.io.wavfile
 '''
 test = np.array([[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ,[0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0]
@@ -38,6 +39,9 @@ if not os.path.isdir('stimsWAV'):
 #%% Functions
 
 def generate_midi(inputArray, tempo, loops, saveName):
+	
+	if saveName[0][-4:] != '.mid':
+		saveName = saveName + '.mid'
 	
 	output = mido.MidiFile(type=1)
 	# default is 480 ticks per beat.
@@ -106,26 +110,102 @@ def thisPath():
 	thisPath = thisPath.replace('\\', '/')
 	return thisPath
 
-def write_wav(midiName, name):
-	#REPLACE THIS WITH YOUR OWN FLUIDSYNTH
-	# Attempting now to autofind path
-	#thisPath = os.getcwd()
-	#print(thisPath)
-	#fluidsynth = 'C:/Users/olehe/Documents/GitHub/SanderGenerator/fluidsynth-2.2.2/bin/fluidsynth.exe'
-	fluidsynth = thisPath()
-	result = subprocess.run([fluidsynth, "-i", "-q", "default.sf2", midiName, "-T", "wav", "-F", name], shell=True)
-	# This doesn't always play nice, but it's solved by simply letting it sleep a bit.
-	# I've not tested without the sleep, so it could possible work without it.
-	time.sleep(1)
-	
-	return
 
-def normalize(name):
-	# yeah no, I'll fix this later
-	unnormal = np.fromfile(name, dtype='int16')
-	normalized = np.array([unnormal / np.max(np.abs(unnormal)) * 32767], np.int16)
-	# work in progress
-	return
+
+def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
+	
+	
+	#this experimentally just adds some dynamics
+	if dynamics:
+		dynamicsHihat = np.tile([0.8, 0.5, 1, 0.5], 8)
+		dynamicsSnare = np.tile([1, 0.5, 0.7, 0.5, 0.8, 0.5, 0.7, 0.5], 4)
+		dynamicsKick = np.tile([0.5, 0.7, 0.8, 0.5, 1, 0.7, 0.8, 0.5], 4)
+	else:
+		dynamicsHihat = np.ones(32)
+		dynamicsSnare = np.ones(32)
+		dynamicsKick = np.ones(32)
+	
+	if saveName[0][-4:] != '.wav':
+		saveName = saveName + '.wav'
+	
+
+	# read samples
+	
+	rate, hihatSample = scipy.io.wavfile.read('samples/hihat.wav')
+	rate, kickSample = scipy.io.wavfile.read('samples/kick.wav')
+	rate, snareSample = scipy.io.wavfile.read('samples/snare.wav')
+	
+	maxLengthSample = max([len(hihatSample), len(snareSample), len(kickSample)])
+	
+	
+	if rate != fs:
+		print('Error: Sample rate mismatch between samples and specified sample rate')
+		return
+	
+	# create three np arrays for each instrument, fill them, then merge them
+	quarter = 60/tempo
+	bar = 4 * quarter
+	length = 2 * bar * fs
+
+	# figure out a way to set dtype as same as the wav-files
+	hihats = np.zeros((int(length*2),2), dtype='int16')
+	snare = np.zeros((int(length*2),2), dtype='int16')
+	kick = np.zeros((int(length*2),2), dtype='int16')
+	
+	# three separate loops
+	hihatEvents = pattern[0]
+	snareEvents = pattern[1]
+	kickEvents = pattern[2]
+	
+	# for fast tempi, need to consider that the length won't be enough.
+	
+	#hihats
+	
+	for n in range(0, len(hihatEvents)):
+		if hihatEvents[n] == 1:
+			thisPosition = int(round((length/32) * n))
+			hihats[thisPosition:thisPosition+len(hihatSample),] = hihats[thisPosition:thisPosition+len(hihatSample),] + (hihatSample * dynamicsHihat[n])
+
+	
+	#snare
+	for n in range(0, len(snareEvents)):
+		if snareEvents[n] == 1:
+			thisPosition = int(round((length/32) * n))
+			snare[thisPosition:thisPosition+len(snareSample),] = snare[thisPosition:thisPosition+len(snareSample),] + (snareSample * dynamicsSnare[n])
+
+	#kick
+	for n in range(0, len(kickEvents)):
+		if kickEvents[n] == 1:
+			thisPosition = int(round((length/32) * n))
+			kick[thisPosition:thisPosition+len(kickSample),] = kick[thisPosition:thisPosition+len(kickSample),] + (kickSample * dynamicsKick[n])		
+	
+	# mix together
+	
+	jointSample = (hihats * 0.1) + (snare * 0.3) + (kick * 0.3)
+	# ensure length
+	#jointSample = jointSample[0:int(round(length)),].astype('int16')
+	
+	# add loops
+	# actually, do a little trick here to avoid any cutoff at the seams
+	# looped = np.tile(jointSample, (loops,1))
+	looped = np.zeros((int(((length) * loops + (2 * length))), 2), dtype='int16')
+	#if loops > 1:
+	for n in range(0, loops):
+		thisPosition = n*int(length)
+		looped[thisPosition:thisPosition+len(jointSample)] = looped[thisPosition:thisPosition+len(jointSample)] + jointSample
+	# now trim it
+	looped = looped[0:(int(round(length*loops))+maxLengthSample)]
+		
+	#else:
+	#	looped = jointSample[0:(int(round(length*loops))+maxLengthSample)]
+			
+	
+	# write wav
+	scipy.io.wavfile.write(saveName, fs, looped)
+	
+	return saveName
+
+
 
 #%%
 
@@ -149,12 +229,13 @@ def processPattern(pattern, savename='default', tempo=120, loops=1):
 	wSIstring = wSIstring.replace('.', '_')
 	wSIformatted = '-wSI-' +wSIstring
 
-	midiName = 'stimsMidi/' + savename + hSIformatted + wSIformatted + '.mid'
-	waveName = 'stimsWAV/' + savename + hSIformatted + wSIformatted + '.wav'
+	midiName = 'stimsMidi/' + savename + hSIformatted + wSIformatted
+	waveName = 'stimsWAV/' + savename + hSIformatted + wSIformatted
 	
 
 	generate_midi(pattern, tempo, loops, midiName)
-	write_wav(midiName, waveName)
+	generate_wav(pattern, tempo, loops, waveName)
+
 	
 	return
 
@@ -229,21 +310,16 @@ def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=
 		
 #%% helpful functions
 
-def savePattern(pattern, saveName):
+def savePattern(pattern, saveName, verbose=True):
 	
 	patternA = pattern[1,] # snare
 	patternB = pattern[2,] # kick
 	
-	output = syncopationIndexHoesl(patternA, patternB)
+	output = syncopationIndexHoesl(patternA, patternB, wrap = False)
 	hWeights = output[1]
-	output = syncopationIndexWitek(patternA, patternB)
+	output = syncopationIndexWitek(patternA, patternB, wrap = False)
 	wWeights = output[1]
 	
-	
-	
-	
-	
-	colNames = ['hihat', 'snare', 'kick', 'hWeights', 'wWeights']
 	data = {'hihat':pattern[0,],
 	  'snare':pattern[1,],
 	  'kick':pattern[2,],
@@ -253,10 +329,29 @@ def savePattern(pattern, saveName):
 
 	#print(name)
 	if saveName[0][-4:] != '.csv':
-		saveName = name[0] + '.csv'
+		saveName = saveName + '.csv'
 	
 	pattern_df.to_csv(saveName)
-	self.report_status('Saved pattern')
+	if verbose:
+		print('Pattern saved')
+	return
+
+def loadPattern(filename, asArray=True):
+	# this is probably going to fail in many cases, since I don't care to write checks for weird formatting issues
+	# defaults to array, otherwise specify false and will return as dataframe
+	try:
+		pattern = pd.read_csv(filename, index_col=0)	
+	except:
+		print('Loading file failed')
+		return
+	
+	if asArray:
+		pattern_np = pattern.to_numpy()
+		pattern_np = pattern_np[0:3,].astype('int32')
+		return pattern_np
+	
+	
+	return pattern
 
 		
 #%% Syncopation measures
