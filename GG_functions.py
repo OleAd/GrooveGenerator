@@ -117,9 +117,9 @@ def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
 	
 	#this experimentally just adds some dynamics
 	if dynamics:
-		dynamicsHihat = np.tile([0.8, 0.5, 1, 0.5], 8)
-		dynamicsSnare = np.tile([1, 0.5, 0.7, 0.5, 0.8, 0.5, 0.7, 0.5], 4)
-		dynamicsKick = np.tile([0.5, 0.7, 0.8, 0.5, 1, 0.7, 0.8, 0.5], 4)
+		dynamicsHihat = np.tile([0.7, 0.5, 1, 0.5], 8)
+		dynamicsSnare = np.tile([0.8, 0.7, 0.8, 0.5, 1, 0.5, 0.8, 0.5], 4)
+		dynamicsKick = np.tile([1, 0.5, 0.7, 0.5, 0.8, 0.5, 0.7, 0.5], 4)
 	else:
 		dynamicsHihat = np.ones(32)
 		dynamicsSnare = np.ones(32)
@@ -135,6 +135,11 @@ def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
 	rate, kickSample = scipy.io.wavfile.read('samples/kick.wav')
 	rate, snareSample = scipy.io.wavfile.read('samples/snare.wav')
 	
+	# just pushing down the amplitude a bit
+	hihatSample = hihatSample * 0.25
+	kickSample = kickSample * 0.25
+	snareSample = snareSample * 0.25
+	
 	maxLengthSample = max([len(hihatSample), len(snareSample), len(kickSample)])
 	
 	
@@ -148,9 +153,9 @@ def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
 	length = 2 * bar * fs
 
 	# figure out a way to set dtype as same as the wav-files
-	hihats = np.zeros((int(length*2),2), dtype='int16')
-	snare = np.zeros((int(length*2),2), dtype='int16')
-	kick = np.zeros((int(length*2),2), dtype='int16')
+	hihats = np.zeros((int(length + maxLengthSample),2), dtype='int16')
+	snare = np.zeros((int(length + maxLengthSample),2), dtype='int16')
+	kick = np.zeros((int(length + maxLengthSample),2), dtype='int16')
 	
 	# three separate loops
 	hihatEvents = pattern[0]
@@ -198,10 +203,11 @@ def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
 		
 	#else:
 	#	looped = jointSample[0:(int(round(length*loops))+maxLengthSample)]
-			
+	
+	normalized = np.array((looped / np.max(np.abs(looped.flatten()))) * 32767, dtype='int16')
 	
 	# write wav
-	scipy.io.wavfile.write(saveName, fs, looped)
+	scipy.io.wavfile.write(saveName, fs, normalized)
 	
 	return saveName
 
@@ -213,11 +219,10 @@ def processPattern(pattern, savename='default', tempo=120, loops=1):
 
 	savename.replace(' ', '')
 	
+	patternA = pattern[1,] # snare
+	patternB = pattern[2,] # kick
 	
-	#print(output_array)
-	#print(self.tempoField.text())
-	
-	SI = calculate()
+	SI = calculate(patternA, patternB)
 	hSI = SI[0]
 	wSI = SI[1]
 	hSIstring = str(round(hSI, 3))
@@ -284,7 +289,7 @@ def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=
 	generate = True
 	timeStart = time.time()
 	
-	
+	success = False
 	count = 0
 	if verbose:
 		print('Searching for a maximum of ' + str(timeout) + ' seconds')
@@ -296,6 +301,7 @@ def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=
 		
 		if thisSI >= target*0.9 and thisSI <= target*1.1:
 			generate = False
+			success = True
 			if verbose:
 				print('Pattern found.')
 		timeNow = time.time()
@@ -306,7 +312,7 @@ def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=
 				print('Failed, tested ' + str(count) + ' patterns.')
 			
 			
-	return thisPattern
+	return thisPattern, success
 		
 #%% helpful functions
 

@@ -16,7 +16,6 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 import GG_functions
-#import GG_grooveIndex
 
 # some style
 
@@ -231,36 +230,14 @@ class GrooveGenerator(QWidget):
 	def savePattern(self):
 		pattern = self.getPattern()
 		
-		patternA = pattern[1,] # snare
-		patternB = pattern[2,] # kick
-		
-		output = self.syncopationIndexHoesl(patternA, patternB)
-		hWeights = output[1]
-		output = self.syncopationIndexWitek(patternA, patternB)
-		wWeights = output[1]
-		
-		
-		
-		
-		
-		colNames = ['hihat', 'snare', 'kick', 'hWeights', 'wWeights']
-		data = {'hihat':pattern[0,],
-		  'snare':pattern[1,],
-		  'kick':pattern[2,],
-		  'hWeights':hWeights,
-		  'wWeights':wWeights}
-		pattern_df = pd.DataFrame(data).T
 		
 		name = QFileDialog.getSaveFileName(self, 'Save File', filter='*.csv')
 		#print(name)
-		if name[0][-4:] != '.csv':
-			saveName = name[0] + '.csv'
-		else:
-			saveName = name[0]
 		
-		pattern_df.to_csv(saveName)
+		GG_functions.savePattern(pattern, name[0], verbose=False)
 		self.report_status('Saved pattern')
 		
+		return
 		
 		
 	def loadPattern(self):
@@ -268,15 +245,12 @@ class GrooveGenerator(QWidget):
 		name = QFileDialog.getOpenFileName(self, 'Load File', filter='*.csv')
 		
 		try:
-			pattern = pd.read_csv(name[0], index_col=0)
-			#print(pattern)
-			pattern_np = pattern.to_numpy()
-			pattern_np = pattern_np[0:3,].flatten()
+			pattern = GG_functions.loadPattern(name, asArray=True)
 			
-			assert len(pattern_np) == stepNumbers * stepChannels
+			assert len(pattern) == stepNumbers * stepChannels
 			
 			for n, button in enumerate(self.metro_group.buttons()):
-				button.setChecked(bool(pattern_np[n]))
+				button.setChecked(bool(pattern[n]))
 			self.report_status('Loaded pattern')
 			self.calculate()
 		except:
@@ -305,23 +279,10 @@ class GrooveGenerator(QWidget):
 		
 		maxEvents = 20
 		minEvents = 10
-		# collapse over both instruments? Total between 12 and 18?
 		
-		# set the hi-hat first
-		hihat = np.array([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-		        1, 0, 1, 0, 1, 0, 1, 0, 1, 0])
-
-		# now generating them both together
-		generate = True
-		while generate:
-			#snare = np.random.randint(0, 1+1, 32)
-			snare = np.round(1-np.random.power(1,32)).astype(int)
-			kick = np.round(1-np.random.power(1,32)).astype(int)
-			both = np.array([snare, kick]).flatten()
-			if sum(both) >= minEvents and sum(both) <= maxEvents:
-				generate = False
+		patternGen = GG_functions.generateRandomPattern(minEvents, maxEvents)
 		
-		pattern = np.array([hihat, snare, kick]).flatten()
+		pattern = patternGen.flatten()
 		for n, button in enumerate(self.metro_group.buttons()):
 			button.setChecked(bool(pattern[n]))
 		
@@ -330,6 +291,7 @@ class GrooveGenerator(QWidget):
 			self.report_status('Generated pattern')
 		self.calculate()
 		return pattern
+	
 	
 	def searchPattern(self):
 		self.report_status('Searching for pattern')
@@ -364,29 +326,28 @@ class GrooveGenerator(QWidget):
 			return
 		
 		target = float(target)
-
-		#target = 0.3
-		generate = True
-		waitTime = 60
-		timeStart = time.time()
+		measureCode = measure[0]
 		
-		count = 0
-		while generate:
-			count += 1
-			thisPattern = self.generateRandomPattern(verbose=False)
-			SIs = self.calculate()
-			thisSI = SIs[select]
+		pattern, success = GG_functions.searchPattern(measureCode, 
+						  target=target,
+						  timeout=60,
+						  minEvents=10,
+						  maxEvents=30,
+						  verbose=False)
+		patternFlat = pattern.flatten()
+		for n, button in enumerate(self.metro_group.buttons()):
+			button.setChecked(bool(patternFlat[n]))
 			
-			if thisSI >= target*0.9 and thisSI <= target*1.1:
-				generate = False
-				self.report_status('Pattern found.')
-			timeNow = time.time()
-			if (timeNow-timeStart) > 10:
-				generate=False
-				self.report_status('Failed, tested ' + str(count) + ' patterns.')
+		if success:
+			self.report_status('Pattern found.')
+			self.calculate()
+		else:
+			self.report_status('Failed to find pattern.')
+			self.calculate()
+		
+		return
 			
-			
-			
+	
 	
 	def calculate(self, verbose=True):
 		# Calculates and reports the SI
@@ -395,10 +356,8 @@ class GrooveGenerator(QWidget):
 		patternA = pattern[1,] # snare
 		patternB = pattern[2,] # kick
 		
-		output = self.syncopationIndexHoesl(patternA, patternB)
-		hSI = output[0]
-		output = self.syncopationIndexWitek(patternA, patternB)
-		wSI = output[0]
+		hSI, wSI = GG_functions.calculate(patternA, patternB)
+		
 
 		self.SIcalcH.setText(str(round(hSI,3)))
 		self.SIcalcW.setText(str(round(wSI,3)))
@@ -406,18 +365,16 @@ class GrooveGenerator(QWidget):
 		events = self.countEvents()
 		self.eventCount.setText(str(events))
 		
-		#print('Syncopation Index is: ' + str(round(SI,3)))
 		
-		#GI = GG_grooveIndex.grooveIndex(patternA, patternB, events)
-		#print(GI)
-		#print(GI)
-		
-		return hSI, wSI#, GI
+		return hSI, wSI
 		
 	def clear(self):
 		#print('Clearing.')
 		for n, button in enumerate(self.metro_group.buttons()):
 			button.setChecked(False)
+		
+		self.calculate()
+		return
 			
 			
 	def hihat_on(self):
@@ -430,6 +387,9 @@ class GrooveGenerator(QWidget):
 					step = False
 				else:
 					step = True
+		
+		self.calculate()
+		return
 				
 	def kick_on(self):
 		#print('kicking.')
@@ -445,6 +405,8 @@ class GrooveGenerator(QWidget):
 					count += 1
 				if count > 2:
 					step = True
+		self.calculate()
+		return
 					
 	def snare_on(self):
 		#print('kicking.')
@@ -460,6 +422,8 @@ class GrooveGenerator(QWidget):
 					count += 1
 				if count > 2:
 					step = True
+		self.calculate()
+		return
 			
 	def report_status(self, status):
 		self.statusBox.setText(status)
@@ -476,38 +440,17 @@ class GrooveGenerator(QWidget):
 		text.replace(' ', '')
 		
 		
-		output_array = self.getPattern()
+		pattern = self.getPattern()
 		
-		#print(output_array)
-		#print(self.tempoField.text())
 		tempo = int(self.tempoField.text())
 		loops = int(self.loopButton.value())
 		print('Doing ' + str(loops) + ' loops.')
 		
-		SI = self.calculate()
-		hSI = SI[0]
-		wSI = SI[1]
-		hSIstring = str(round(hSI, 3))
-		wSIstring = str(round(wSI, 3))
-		#replace comma with something?
-		hSIstring = hSIstring.replace('.', '_')
-		hSIformatted = '-hSI-' +hSIstring
+		GG_functions.processPattern(pattern, text, tempo, loops)
 		
-		wSIstring = wSIstring.replace('.', '_')
-		wSIformatted = '-wSI-' +wSIstring
-		
-		
-		#midiName = 'stimsMidi/' + self.outputName.text() + SIformatted + '.mid'
-		#waveName = 'stimsWAV/' + self.outputName.text() + SIformatted + '.wav'
-		
-		midiName = 'stimsMidi/' + text + hSIformatted + wSIformatted + '.mid'
-		waveName = 'stimsWAV/' + text + hSIformatted + wSIformatted + '.wav'
-		
-
-		GGfunctions.generate_midi(output_array, tempo, loops, midiName)
-		GGfunctions.write_wav(midiName, waveName)
 		self.report_status('Done! Ready.')
-
+		
+		return
 	
 	
 	

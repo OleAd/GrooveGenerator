@@ -1,4 +1,5 @@
 /bin/
+/stimsWAV/*
 default.sf2
 GrooveGenerator_WIP.py
 sync_index.py
@@ -6,3 +7,6 @@ GG_grooveIndex.py
 GGfunctions.py
 stimsWAV/testing.wav
 withDynamics.wav
+*.pyc
+*.mid
+*.csv
