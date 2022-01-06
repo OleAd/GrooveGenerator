@@ -4,6 +4,7 @@ default.sf2
 GrooveGenerator_WIP.py
 sync_index.py
 GG_grooveIndex.py
+GG_workscript.py
 GGfunctions.py
 stimsWAV/testing.wav
 withDynamics.wav
