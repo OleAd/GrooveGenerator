@@ -333,8 +333,8 @@ def savePattern(pattern, saveName, verbose=True):
 	  'wWeights':wWeights}
 	pattern_df = pd.DataFrame(data).T
 
-	#print(name)
-	if saveName[0][-4:] != '.csv':
+	print(saveName)
+	if saveName[-4:] != '.csv':
 		saveName = saveName + '.csv'
 	
 	pattern_df.to_csv(saveName)

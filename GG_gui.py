@@ -243,9 +243,9 @@ class GrooveGenerator(QWidget):
 	def loadPattern(self):
 		# this is probably going to fail in many cases, since I don't care to write checks for weird formatting issues
 		name = QFileDialog.getOpenFileName(self, 'Load File', filter='*.csv')
-		
+		print(name[0])
 		try:
-			pattern = GG_functions.loadPattern(name, asArray=True)
+			pattern = GG_functions.loadPattern(name[0], asArray=True)
 			
 			assert len(pattern) == stepNumbers * stepChannels
 			
