@@ -18,6 +18,7 @@ import pingouin as pg
 import GG_functions
 
 import random
+import time
 
 
 
@@ -25,17 +26,25 @@ import random
 #%% The goal of this section is to just create a lot of patterns and correlate
 # between Hoesl's and Witek's measure of syncopation.
 
+'''
+# Store the patterns as integers, then just convert to binary for the pattern
 
-# Should patterns be stored too?
-# There are a totalt of 65536 permutations of each instrument row given 16 events
-# only kick and snare count, and only if there's at least one event,
-# meaning there are 65535 + 65535 = 131070 combinations 
-# could just generate them all
-# BUT, for 32 then it is: 4294967296 * 2 - 2, which is just too much... OR IS IT?
-# Could give it a try...
-# estimates 0.0024 s per rhythm
-# so, that means around 119 days of 24 hour computing. 
-# Down to 2 weeks with parallelization, don't want to commit to that
+There's 2^64 possible permuations.
+32 dropped due to single event at same time
+64 dropped to single events, per instrument
+Assuming it takes 4 seconds to play the pattern at 120 BPM
+Then : ((2**64 - 96) * 4 / 3600) / 24 / 365  (to get it in years)
+Still a huge number. Let's assume that the entire population of Denmark does it
+Population is around 5.8 million
+
+((2**64 - 96) * 4 / 3600) / 24 / 365 / 5800000
+
+In compute time
+((2**64 - 96) * 0.00176) / 3600 / 24 / 365 / 1000000 / 16
+
+
+'''
+	
 
 
 # initiate empty dictionary
@@ -51,14 +60,16 @@ hihats = np.tile(np.array([1,0]),16)
 
 # random sampling without replacement from all possibilities
 
-patterns = 10000
+patterns = 1000000
+# 500k patterns should take around 15 minutes, single-threaded.
+# estimated 17.6 ms per iteration
 numbers = range(1, maxNum)
 
 snareValues = random.sample(numbers, patterns)
 kickValues = random.sample(numbers, patterns)
 
 count = 0
-
+tic = time.time()
 for n in range(0, len(snareValues)):
 	snare = format(snareValues[n],'b').zfill(32)
 	kick = format(kickValues[n],'b').zfill(32)
@@ -75,10 +86,14 @@ for n in range(0, len(snareValues)):
 				'snareN':snareValues[n],
 				'kickN':kickValues[n]}
 	count += 1
+
+toc = time.time()
+# roughly 1.8 ms per loop.
+
+allData_df = pd.DataFrame.from_dict(allData, 'index')
+
+allData_df.to_csv('1m_patterns.csv')
 	
-
-
-allData_df = pd.DataFrame.from_dict(allData, 'index')	
 
 #%% Plots and statistics
 
