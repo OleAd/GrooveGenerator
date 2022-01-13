@@ -73,9 +73,11 @@ tic = time.time()
 for n in range(0, len(snareValues)):
 	snare = format(snareValues[n],'b').zfill(32)
 	kick = format(kickValues[n],'b').zfill(32)
+	
 
 	snare = np.array(list(snare), 'int16')
 	kick = np.array(list(kick), 'int16')
+	
 	
 	hSI, wSI = GG_functions.calculate(snare, kick)
 	eventCount = sum(snare)+sum(kick)

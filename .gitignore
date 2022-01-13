@@ -11,3 +11,7 @@ withDynamics.wav
 *.pyc
 *.mid
 *.csv
+MIRtoolbox1.8.1/*
+!MIRtoolbox1.8.1/note.txt
+GG_correlationsWORKSCRIPT.py
+temp.wav
