@@ -4,7 +4,8 @@ function output = getMIR(input)
     beatspectrum = mean(mirgetdata(mirbeatspectrum(input)));
     pulse = mirgetdata(mirpulseclarity(input));
     novelty = mirgetdata(mirnovelty(input));
-    aucNovel = trapz(1:length(novelty), novelty);
+    aucNovel = cumtrapz(1:length(novelty), novelty);
+    aucNovel = aucNovel(end);
     stdNovel = std(novelty);
     
     output = [beatspectrum, pulse, aucNovel, stdNovel];
