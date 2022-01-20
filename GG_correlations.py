@@ -99,11 +99,15 @@ allData_df.to_csv('1m_patterns.csv')
 
 #%% Plots and statistics
 
+allData_df = pd.read_csv('1m_patterns.csv', index_col=0)
+
 sns.scatterplot(data=allData_df, x='wSI', y='hSI')	
 pg.corr(allData_df['wSI'], allData_df['hSI'])
 
 
-sns.scatterplot(data=allData_df, x='wSI', y='events')
+sns.scatterplot(data=allData_df, x='hSI', y='events')
+pg.corr(allData_df['hSI'], allData_df['events'])
+
 sns.scatterplot(data=allData_df, x='hSI', y='events')	
 		
 	

@@ -334,7 +334,12 @@ class GrooveGenerator(QWidget):
 						  minEvents=10,
 						  maxEvents=30,
 						  verbose=False)
-		patternFlat = pattern.flatten()
+		if success:
+			patternFlat = pattern.flatten()
+		else:
+			self.report_status('Failed to find pattern.')
+			self.calculate()
+			return
 		for n, button in enumerate(self.metro_group.buttons()):
 			button.setChecked(bool(patternFlat[n]))
 			
