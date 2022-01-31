@@ -1,4 +1,5 @@
 /bin/
+/paper/
 /stimsWAV/*
 default.sf2
 GrooveGenerator_WIP.py
