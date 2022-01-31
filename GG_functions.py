@@ -38,8 +38,25 @@ if not os.path.isdir('stimsWAV'):
 
 #%% Functions
 
-def generate_midi(inputArray, tempo, loops, saveName):
+def generate_midi(inputArray, tempo=120, loops=1, saveName='MIDIoutput'):
+	"""
+	Generate MIDI file from a pattern.
+	Specify tempo in BPM, loops as positive integers, and a savename for the
+	resulting MIDI file
 	
+
+	Parameters
+	----------
+	inputArray : A rhythm pattern
+	tempo : Integer denoting tempo in BPM. Default is 120.
+	loops : Number of times to repeat the pattern. Default is 1.
+	saveName : Name of the resulting MIDI-file
+
+	Returns
+	-------
+	None.
+
+	"""
 	if saveName[0][-4:] != '.mid':
 		saveName = saveName + '.mid'
 	
@@ -105,6 +122,14 @@ def generate_midi(inputArray, tempo, loops, saveName):
 	return
 
 def thisPath():
+	"""
+	This returns the path of fluidsynth. NOT IN USE
+
+	Returns
+	-------
+	thisPath : Path to fluidsynth.
+
+	"""
 	thisPath = os.getcwd()
 	thisPath = thisPath + '\\bin\\fluidsynth.exe'
 	thisPath = thisPath.replace('\\', '/')
@@ -112,8 +137,29 @@ def thisPath():
 
 
 
-def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
-	
+def generate_wav(pattern, tempo=120, loops=1, saveName='audiofile.wav', fs=44100, dynamics=False):
+	"""
+	Generate a .wav file from a pattern.
+	Specify a tempo (in BPM), loops, name of the file, sampling rate,
+	and decide if you want "dynamics". Dynamics adds offsets to the amplitude
+	of the onsets, thus generating more naturally sounding rhythm pattern. 
+
+	Parameters
+	----------
+	pattern : A rhythm pattern.
+	tempo : Tempo in BPM, default is 120.
+	loops : Number of times to repeat the pattern. 
+	saveName : Name of the output file.
+	fs : Integer, optional
+		Samplerate. The default is 44100.
+	dynamics : Boolean, optional
+		Setting this to true adds dynamics to the audio file. The default is False.
+
+	Returns
+	-------
+	saveName : Path and name of saved audio file.
+
+	"""
 	
 	#this experimentally just adds some dynamics
 	if dynamics:
@@ -216,7 +262,26 @@ def generate_wav(pattern, tempo, loops, saveName, fs=44100, dynamics=False):
 #%%
 
 def processPattern(pattern, savename='default', tempo=120, loops=1):
+	"""
+	This function processes a rhythm pattern, creating a MIDI and audio file.
+	The files are suffixed with their syncopation level.
 
+	Parameters
+	----------
+	pattern : Numpy array.
+		A rhythm pattern..
+	savename : String, optional
+		Name of the output files. The default is 'default'.
+	tempo : Integer, optional
+		Tempo in BPM. The default is 120.
+	loops : Integer, optional
+		Number of times to repeat the pattern. The default is 1.
+
+	Returns
+	-------
+	None.
+
+	"""
 	savename.replace(' ', '')
 	
 	patternA = pattern[1,] # snare
@@ -248,6 +313,24 @@ def processPattern(pattern, savename='default', tempo=120, loops=1):
 
 
 def generateRandomPattern(minEvents=10, maxEvents=20):
+	"""
+	This function generates a random rhythm pattern.
+	It draws from a power distribution, and returns a pattern with selectable
+	minimum and maximum events.
+
+	Parameters
+	----------
+	minEvents : Integer, optional
+		Minimum number of events in the rhythm. The default is 10.
+	maxEvents : TYPE, optional
+		Maximum number of events in the rhythm. The default is 20.
+
+	Returns
+	-------
+	pattern : Numpy array
+		A rhythm pattern.
+
+	"""
 	# just a simple random pattern with some contraints
 	
 	maxEvents = 20
@@ -275,6 +358,34 @@ def generateRandomPattern(minEvents=10, maxEvents=20):
 
 
 def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=30, verbose=True):
+	"""
+	This function searches for a pattern with a given syncopation index (SI) value.
+
+	Parameters
+	----------
+	SImeasure : String, optional
+		Choose which syncopation index calculation is used. 
+		The default is 'W' for Witek's syncopation index. The other option is
+		H for Hoels's syncopation index.
+	target : Float, optional
+		This is the target SI. The default is 30.
+	timeout : Integer, optional
+		A maximum amount of time to search for, in seconds. The default is 60.
+	minEvents : Integer, optional
+		Minimum number of events in the rhythm. The default is 10.
+	maxEvents : Integer, optional
+		Maximum number of events in the rhythm. The default is 30.
+	verbose : Boolean, optional
+		If verbose the function will report if it fails. The default is True.
+
+	Returns
+	-------
+	thisPattern : Numpy array
+		A rhythm pattern.
+	success : Boolean
+		A boolean describing if a rhythm to fit the target was found.
+
+	"""
 	# select either 'H' for Hoesl's or 'W' for Witek's as a measure.
 	if SImeasure == 'H':
 		select = 0
@@ -316,7 +427,25 @@ def searchPattern(SImeasure='W', target=30, timeout=60, minEvents=10, maxEvents=
 		
 #%% helpful functions
 
-def savePattern(pattern, saveName, verbose=True):
+def savePattern(pattern, saveName='pattern', verbose=True):
+	"""
+	This function saves the pattern as a csv, along with the weights used in
+	the syncopation calculation
+
+	Parameters
+	----------
+	pattern : Numpy array
+		The rhythm pattern to save.
+	saveName : String, optional
+		Name of the output file. The default is 'pattern'.
+	verbose : Boolean, optional
+		If true, prints that it has saved the pattern. The default is True.
+
+	Returns
+	-------
+	None.
+
+	"""
 	
 	patternA = pattern[1,] # snare
 	patternB = pattern[2,] # kick
@@ -343,6 +472,24 @@ def savePattern(pattern, saveName, verbose=True):
 	return
 
 def loadPattern(filename, asArray=True):
+	"""
+	This function loads a pattern from a csv file. Note that this is likely to
+	fail in many cases, and should only really be used for patterns saved
+	by the savePattern functions.
+
+	Parameters
+	----------
+	filename : String
+		Path of the file to load.
+	asArray : Boolean, optional
+		Choose whether to load as a numpy array. The default is True.
+
+	Returns
+	-------
+	Numpy array
+		Rhythm pattern.
+
+	"""
 	# this is probably going to fail in many cases, since I don't care to write checks for weird formatting issues
 	# defaults to array, otherwise specify false and will return as dataframe
 	try:
@@ -362,6 +509,29 @@ def loadPattern(filename, asArray=True):
 		
 #%% Syncopation measures
 def syncopationIndexHoesl(patternA, patternB, wrap = True, weights = None):
+	"""
+	This function calculates Hoesl's syncopation index from
+	X.
+	Wrap decides whether the first event is added to the end.
+	Weights are hard coded, but can be supplied.
+
+	Parameters
+	----------
+	patternA : Numpy array
+		The first rhythm pattern, usually the snare.
+	patternB : Numpy array
+		The second rhythm pattern, usually the kick.
+	wrap : Boolean, optional
+		Whether to add the first event to the end. The default is True.
+	weights : Numpy array, optional
+		Custom weights for the SI calculation. The default is None.
+
+	Returns
+	-------
+	Float
+		Returns the syncopation index value.
+
+	"""
 	# default to wrapping, meaning that the first event in the patterns
 	
 	if weights is not None:
@@ -420,6 +590,26 @@ def syncopationIndexHoesl(patternA, patternB, wrap = True, weights = None):
 
 
 def syncopationIndexWitek(patternA, patternB, wrap = True, weights = None):
+	"""
+	This calculates Witek's syncopation index from X.
+
+	Parameters
+	----------
+	patternA : Numpy array
+		The first rhythm pattern, usually the snare.
+	patternB : Numpy array
+		The second rhythm pattern, usually the kick.
+	wrap : Boolean, optional
+		Whether to add the first event to the end. The default is True.
+	weights : Numpy array, optional
+		Custom weights for the SI calculation. The default is None.
+
+	Returns
+	-------
+	Float
+		Returns the syncopation index.
+
+	"""
 
 	
 	if weights is not None:
@@ -475,6 +665,30 @@ def syncopationIndexWitek(patternA, patternB, wrap = True, weights = None):
 	return output
 
 def calculate(patternA, patternB, wrap = True, weights = None, verbose=False):
+	"""
+	This function wraps both syncopation index calculations.
+
+	Parameters
+	----------
+	patternA : Numpy array
+		The first rhythm pattern, usually the snare.
+	patternB : Numpy array
+		The second rhythm pattern, usually the kick.
+	wrap : Boolean, optional
+		Whether to add the first event to the end. The default is True.
+	weights : Numpy array, optional
+		Custom weights for the SI calculation. The default is None.
+	verbose : Boolean, optional
+		If true, prints the syncopation index values.
+
+	Returns
+	-------
+	hSI : Float
+		Hoesl's syncopation index.
+	wSI : Float
+		Witek's syncopation index.
+
+	"""
 	# Calculates and reports the SI, only the SI
 	
 
